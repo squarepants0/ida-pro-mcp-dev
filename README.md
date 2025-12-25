@@ -140,10 +140,57 @@ uv run ida-pro-mcp --transport http://127.0.0.1:8744/sse
 After installing [`idalib`](https://docs.hex-rays.com/user-guide/idalib) you can also run a headless SSE server:
 
 ```sh
+# Start server with an initial binary (legacy mode)
 uv run idalib-mcp --host 127.0.0.1 --port 8745 path/to/executable
+
+# Start server without initial binary (new dynamic loading mode)
+uv run idalib-mcp --host 127.0.0.1 --port 8745
 ```
 
-_Note_: The `idalib` feature was contributed by [Willi Ballenthin](https://github.com/williballenthin).
+### Dynamic Multi-Binary Management (idalib mode)
+
+The headless MCP server now supports dynamic loading and management of multiple binaries without restarting. This allows you to:
+
+- Start the server without specifying a binary file
+- Open multiple binaries dynamically during analysis
+- Switch between different binaries seamlessly
+- Manage multiple analysis sessions simultaneously
+
+**New MCP Tools for idalib mode:**
+
+- `idalib_open(input_path, run_auto_analysis=True, session_id=None)` - Open a binary and create a new session
+- `idalib_close(session_id)` - Close a specific session
+- `idalib_switch(session_id)` - Switch to a different session
+- `idalib_list()` - List all open sessions
+- `idalib_current()` - Get current active session info
+
+**Example workflow:**
+
+```python
+# Start the server without any binary
+# $ uv run idalib-mcp --host 127.0.0.1 --port 8745
+
+# Open first binary
+result = idalib_open("/path/to/binary1.exe")
+# Returns: {"success": true, "session": {"session_id": "a3f4c8b2", ...}}
+
+# Open second binary (first one stays loaded)
+result = idalib_open("/path/to/binary2.dll")
+# Returns: {"success": true, "session": {"session_id": "b7e2d9f1", ...}}
+
+# List all sessions
+sessions = idalib_list()
+# Returns: {"sessions": [...], "count": 2, "current_session_id": "b7e2d9f1"}
+
+# Switch back to first binary
+idalib_switch("a3f4c8b2")
+# All subsequent MCP calls now operate on binary1.exe
+
+# Close a session when done
+idalib_close("b7e2d9f1")
+```
+
+_Note_: The `idalib` feature was contributed by [Willi Ballenthin](https://github.com/williballenthin). Multi-binary session management is a new enhancement to this feature.
 
 
 ## MCP Resources
